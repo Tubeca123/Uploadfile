@@ -13,24 +13,13 @@
     <div class="flex justify-between items-center p-4">
         <div class="flex items-center space-x-4">
             <a href="#" class="text-gray-600 hover:text-gray-800"><i class="fas fa-question-circle"></i> Kho ảnh</a>
-            <div class="relative">
-                <button class="flex items-center space-x-1 text-gray-600 hover:text-gray-800">
-                    <i class="fas fa-language"></i>
-                    <span>VI</span>
-                    <i class="fas fa-caret-down"></i>
-                </button>
-            </div>
-            <a href="{{route('images.index')}}" class="text-gray-600 hover:text-gray-800"><i></i> Kho ảnh</a>
+            <a href="{{route('images.index')}}" class="text-gray-600 hover:text-gray-800">Kho ảnh</a>
         </div>
-        <div class="text-center">
-            <h1 class="text-2xl font-bold text-blue-600">Tải Lên Ảnh</h1>
-        </div>
-        <div>
-            <button id="uploadBtn" class="flex items-center space-x-1">
-                <i class="fas fa-cloud-upload-alt text-xl"></i>
-                <span class="text-lg">Upload</span>
-            </button>           
-        </div>
+        <h1 class="text-2xl font-bold text-blue-600">imgbb</h1>
+        <button id="uploadBtn" class="flex items-center space-x-1">
+            <i class="fas fa-cloud-upload-alt text-xl"></i>
+            <span class="text-lg">Upload</span>
+        </button>
     </div>
 </header>
 
@@ -43,7 +32,6 @@
     </div>
 </main>
 
-<!-- Modal -->
 <div id="uploadModal" class="fixed bg-opacity-70 inset-x-0 top-[4.0rem] bg-gray-900 hidden flex items-center justify-center">
     <div class="bg-white w-full h-[70%] p-6 shadow-lg overflow-y-auto relative">
         <div class="text-left text-xs text-gray-500 leading-tight">
@@ -52,7 +40,7 @@
         <button id="closeModal" class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 flex items-center">
             <i class="fas fa-times"></i><span class="text-xs text-gray-500 ml-1">Đóng</span>
         </button>
-        <div class="flex flex-col items-center justify-center space-y-4 mt-8 mb-20">
+        <div class="flex flex-col items-center justify-center space-y-4 mt-8 mb-20" id="dropZone">
             <i class="fas fa-cloud-upload-alt text-7xl text-blue-500"></i>
             <p class="mt-4 text-lg">Kéo thả hoặc chọn hình ảnh để tải lên</p>
             
@@ -68,14 +56,13 @@
 </div>
 
 <footer class="text-center py-4 text-gray-600">
-    <div class="flex justify-center space-x-4 mb-2">
-        <a href="#" class="hover:underline text-blue-500">Giới thiệu</a>
-        <a href="#" class="hover:underline text-blue-500">Liên hệ</a>
-    </div>
     <p>Bằng việc sử dụng dịch vụ này, bạn đồng ý với <a href="#" class="hover:underline text-blue-500">Chính sách bảo mật</a>.</p>
 </footer>
 
+
 <script>
+    let selectedFiles = []; 
+
     document.getElementById('uploadBtn').addEventListener('click', function() {
         document.getElementById('uploadModal').classList.remove('hidden');
     });
@@ -84,29 +71,67 @@
         document.getElementById('uploadModal').classList.add('hidden');
     });
 
+    const dropZone = document.getElementById('dropZone');
+    dropZone.addEventListener('dragover', function(event) {
+        event.preventDefault();
+        dropZone.classList.add('border-dashed', 'border-4', 'border-blue-500');
+    });
+
+    dropZone.addEventListener('dragleave', function() {
+        dropZone.classList.remove('border-dashed', 'border-4', 'border-blue-500');
+    });
+
+    dropZone.addEventListener('drop', function(event) {
+        event.preventDefault();
+        dropZone.classList.remove('border-dashed', 'border-4', 'border-blue-500');
+        const files = event.dataTransfer.files;
+        previewImages({ target: { files } });
+    });
+
     function previewImages(event) {
-        var files = event.target.files;
-        var previewSection = document.getElementById('preview-section');
-        previewSection.innerHTML = '';
-        
         document.getElementById('uploadModal').classList.remove('hidden');
+        const files = Array.from(event.target.files);
+        selectedFiles = files; 
+        const previewSection = document.getElementById('preview-section');
+        previewSection.innerHTML = '';
 
-        for (var i = 0; i < files.length; i++) {
-            var reader = new FileReader();
-            
+        selectedFiles.forEach((file, index) => {
+            if (!file.type.startsWith('image/')) return;
+
+            const reader = new FileReader();
             reader.onload = function(e) {
-                var imgElement = document.createElement('img');
+                const imgWrapper = document.createElement('div');
+                imgWrapper.className = 'relative w-24 h-24 mb-4 mr-4';
+                
+                const imgElement = document.createElement('img');
                 imgElement.src = e.target.result;
-                imgElement.className = 'w-24 h-24 object-cover mb-4 mr-4';
-                imgElement.width = 100;
-                imgElement.height = 100;
+                imgElement.className = 'w-full h-full object-cover rounded';
 
-                previewSection.appendChild(imgElement);
+                const deleteButton = document.createElement('button');
+                deleteButton.className = 'absolute top-0 right-0 bg-red-500 text-white p-1 rounded-full text-xs';
+                deleteButton.innerHTML = '<i class="fas fa-times"></i>';
+                deleteButton.addEventListener('click', () => removeImage(index, imgWrapper));
+
+                imgWrapper.appendChild(imgElement);
+                imgWrapper.appendChild(deleteButton);
+                previewSection.appendChild(imgWrapper);
             };
+            reader.readAsDataURL(file);
+        });
 
-            reader.readAsDataURL(files[i]);
-        }
-        document.getElementById('hiddenFileInput').files = files;
+        updateFileInput(); 
+    }
+
+    function removeImage(index, imgWrapper) {
+        selectedFiles.splice(index, 1); 
+        imgWrapper.remove(); 
+        updateFileInput(); 
+    }
+
+    function updateFileInput() {
+        const dataTransfer = new DataTransfer();
+        selectedFiles.forEach(file => dataTransfer.items.add(file));
+        document.getElementById('hiddenFileInput').files = dataTransfer.files; 
     }
 </script>
 
