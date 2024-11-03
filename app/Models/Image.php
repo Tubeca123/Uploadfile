@@ -12,10 +12,10 @@ class Image extends Model
         "file_name",
         "file_path",
         "file_type",
-        "file_size"
-       
+        "file_size",
+        "upload_by",
+        "delete_time"
     ];
     protected $primaryKey = 'Id';
     public $timestamps = false;
-
 }
